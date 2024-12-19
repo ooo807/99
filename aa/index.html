@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寻宝探险</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>寻宝探险</h1>
+        <p>踏上冒险，寻找宝藏！</p>
+    </header>
+
+    <main>
+        <div id="game-container">
+            <button id="start-button">开始冒险</button>
+            <div id="status-container"></div>
+            <div id="question-container" style="display:none;">
+                <p id="question"></p>
+                <input type="text" id="answer" placeholder="请输入答案">
+                <button id="submit-answer">提交答案</button>
+                <p id="feedback" style="color: red;"></p>
+            </div>
+        </div>
+    </main>
+
+    <audio id="background-music" loop>
+        <source src="background-music.mp3" type="audio/mp3">
+    </audio>
+
+    <script src="TreasureMap.js"></script>
+    <script>
+        const statusContainer = document.getElementById("status-container");
+        const startButton = document.getElementById("start-button");
+        const questionContainer = document.getElementById("question-container");
+        const questionText = document.getElementById("question");
+        const answerInput = document.getElementById("answer");
+        const submitAnswerButton = document.getElementById("submit-answer");
+        const feedbackText = document.getElementById("feedback");
+
+        let currentClue = null;
+
+        // 从本地存储加载玩家信息
+        function loadPlayerData() {
+            const playerData = JSON.parse(localStorage.getItem("playerData"));
+            if (playerData) {
+                displayStatus(`欢迎回来，${playerData.nickname}! 游戏历史: ${playerData.history}`);
+            }
+        }
+
+        // 更新游戏状态
+        function displayStatus(message, className = "info") {
+            const statusMessage = document.createElement("div");
+            statusMessage.classList.add(className);
+            statusMessage.textContent = message;
+            statusContainer.appendChild(statusMessage);
+        }
+
+        // 从txt文件加载游戏数据
+        async function loadGameData() {
+            try {
+                const response = await fetch("data.txt");
+                if (!response.ok) {
+                    throw new Error(`加载失败: ${response.statusText}`);
+                }
+                const data = await response.text();
+                const gameData = data.split("\n").reduce((acc, line) => {
+                    const [key, value] = line.split("：");
+                    if (key && value) {
+                        acc[key.trim()] = value.trim();
+                    }
+                    return acc;
+                }, {});
+                return gameData;
+            } catch (error) {
+                console.error("加载游戏数据失败:", error);
+                displayStatus("加载游戏数据失败", "error");
+            }
+        }
+
+        // 启动寻宝游戏
+        async function startTreasureHunt() {
+            startButton.disabled = true;
+            displayStatus("冒险开始！寻找第一个线索...");
+
+            // 加载游戏数据
+            const gameData = await loadGameData();
+            displayStatus(`图书馆线索: ${gameData["图书馆"]}`);
+
+            // 生成并展示第一个问题
+            askQuestion(1 + 3, gameData["图书馆"]);
+
+            // 播放背景音乐
+            document.getElementById("background-music").play();
+        }
+
+        // 生成并展示问题
+        function askQuestion(correctAnswer, clue) {
+            currentClue = { correctAnswer, clue };
+            questionContainer.style.display = "block";
+            questionText.textContent = `解开线索：1 + 3 = ?`; // 示例问题，可以根据需要更改
+            feedbackText.textContent = ""; // 清空之前的反馈信息
+            answerInput.value = ""; // 清空输入框
+            submitAnswerButton.onclick = () => checkAnswer(correctAnswer);
+        }
+
+        // 检查玩家答案
+        function checkAnswer(correctAnswer) {
+            const userAnswer = parseInt(answerInput.value, 10);
+            if (userAnswer === correctAnswer) {
+                feedbackText.style.color = "green";
+                feedbackText.textContent = "正确！你找到了线索！";
+
+                // 显示下一个线索
+                displayStatus(currentClue.clue);
+                questionContainer.style.display = "none";
+                // 可以在这里继续增加更多的谜题和冒险
+            } else {
+                feedbackText.style.color = "red";
+                feedbackText.textContent = "错误，试试再答一次！";
+            }
+        }
+
+        // 页面加载时，启动背景音乐
+        window.onload = () => {
+            loadPlayerData();
+        };
+
+        startButton.addEventListener("click", startTreasureHunt);
+    </script>
+</body>
+</html>
